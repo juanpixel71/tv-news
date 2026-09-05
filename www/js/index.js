@@ -6,12 +6,9 @@ let hlsPlayer = null;
 document.addEventListener('deviceready', onDeviceReady, false);
 
 function onDeviceReady() {
-    // Evitar que la pantalla se apague/desvanezca durante la reproducción
     if (window.plugins && window.plugins.insomnia) {
         window.plugins.insomnia.keepAwake();
     }
-
-    // Ocultar barras de Android (Batería, reloj, botones de navegación)
     activarModoInmersivo();
 
     cargarListaVideos();
@@ -29,7 +26,7 @@ function activarModoInmersivo() {
     if (window.AndroidFullScreen) {
         window.AndroidFullScreen.immersiveMode(
             () => console.log("Modo inmersivo activo"),
-            (err) => console.warn("Error en modo inmersivo:", err)
+            (err) => console.warn("Error modo inmersivo:", err)
         );
     }
 }
@@ -51,14 +48,12 @@ function cargarListaVideos() {
     const reloadBtn = document.getElementById('reloadBtn');
     const container = document.getElementById('buttonsContainer');
     
-    // Asegurar que el botón de reintentar esté oculto al iniciar
     reloadBtn.style.display = "none";
     logPantalla("Cargando canales...");
     container.innerHTML = "";
 
     let completado = false;
 
-    // ESTRATEGIA RÁPIDA: Intento directo con timeout de 2 segundos
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
 
@@ -77,7 +72,6 @@ function cargarListaVideos() {
         .catch(() => {
             clearTimeout(timeoutId);
             if (!completado) {
-                // Si la carga directa tarda o falla, usar inmediatamente el método Script/JSONP
                 cargarViaScriptJSONP(() => {
                     if (!completado) {
                         logPantalla("Error al conectar con la lista de canales.", true);
@@ -123,7 +117,6 @@ function finalizarCargaExitosa(canales) {
     const statusMsg = document.getElementById('statusMessage');
     const reloadBtn = document.getElementById('reloadBtn');
     
-    // Ocultar explícitamente mensajes y botones de error
     statusMsg.style.display = "none";
     reloadBtn.style.display = "none";
     
@@ -146,23 +139,24 @@ function generarBotones(listaVideos) {
         btn.innerText = item.nombre || `Canal ${index + 1}`;
         
         btn.addEventListener('click', () => {
-            reproducirCanal(item.url, item.nombre);
+            // Activar color rojo en el botón pulsado
+            document.querySelectorAll('.btn-stream').forEach(b => b.classList.remove('active-channel'));
+            btn.classList.add('active-channel');
+            
+            reproducirCanal(item.url);
         });
 
         container.appendChild(btn);
     });
 }
 
-function reproducirCanal(url, titulo) {
+function reproducirCanal(url) {
     const player = document.getElementById('mainPlayer');
-    const titleElement = document.getElementById('videoTitle');
 
     if (!url) {
-        alert('Este canal no tiene una URL de reproducción válida.');
+        alert('Este canal no tiene una URL válida.');
         return;
     }
-
-    titleElement.innerText = titulo || 'Reproduciendo...';
 
     if (hlsPlayer) {
         hlsPlayer.destroy();
@@ -179,9 +173,6 @@ function reproducirCanal(url, titulo) {
         hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function () {
             player.play().catch(e => console.warn('Autoplay prevenido:', e));
         });
-    } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
-        player.src = url;
-        player.play().catch(e => console.warn('Autoplay prevenido:', e));
     } else {
         player.src = url;
         player.play().catch(e => console.warn('Autoplay prevenido:', e));
