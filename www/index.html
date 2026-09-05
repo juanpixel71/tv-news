@@ -3,33 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Política de Seguridad Permisiva para Evitar Bloqueos de Carga -->
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: gap: content:;">
-    <title>Reproductor de Video</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:;">
+    <title>Reproductor TV</title>
     <link rel="stylesheet" href="css/index.css">
+    <!-- Librería HLS.js para soportar streams .m3u8 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
 
     <header class="app-header">
-        <h1>Mi Reproductor</h1>
+        <h1>Mi Reproductor TV</h1>
     </header>
 
     <main class="app-content">
-        <!-- Pantalla de reproducción -->
         <div class="video-container">
-            <video id="mainPlayer" controls poster="https://via.placeholder.com/800x450?text=Selecciona+un+video">
+            <video id="mainPlayer" controls playsinline poster="https://via.placeholder.com/800x450?text=Selecciona+un+canal">
                 Tu navegador no soporta el reproductor de video.
             </video>
-            <div id="videoTitle" class="video-title">Selecciona un canal/video</div>
+            <div id="videoTitle" class="video-title">Selecciona un canal</div>
         </div>
 
-        <!-- Estado de carga/error -->
-        <div id="statusMessage" class="status-message">Cargando lista de videos...</div>
-
-        <!-- Botón para recargar la lista si falla -->
+        <div id="statusMessage" class="status-message">Cargando lista de canales...</div>
         <button id="reloadBtn" class="reload-btn" style="display: none;">Reintentar Cargar Lista</button>
 
-        <!-- Contenedor dinámico de botones -->
         <div id="buttonsContainer" class="buttons-grid"></div>
     </main>
 
