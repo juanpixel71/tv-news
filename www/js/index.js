@@ -1,4 +1,4 @@
-// URL RAW exacta de tu Gist
+// Tu URL RAW de Gist (o enlace directo de archivo de Google Drive / OneDrive)
 const GIST_RAW_URL = "https://gist.githubusercontent.com/juanpixel71/4dea433e849fcfda4869b1463f55e1f9/raw/canales.json";
 
 let hlsPlayer = null;
@@ -10,6 +10,7 @@ function onDeviceReady() {
     document.getElementById('reloadBtn').addEventListener('click', cargarListaVideos);
 }
 
+// Para pruebas en navegador si no es app compilada
 if (!window.cordova) {
     document.addEventListener('DOMContentLoaded', () => {
         cargarListaVideos();
@@ -27,46 +28,44 @@ function cargarListaVideos() {
     reloadBtn.style.display = "none";
     container.innerHTML = "";
 
-    // Evitar almacenamiento en caché añadiendo timestamp
-    const urlConCache = GIST_RAW_URL + "?nocache=" + new Date().getTime();
+    // Intentamos cargar a través del proxy CORS más fiable (AllOrigins)
+    const proxyUrl = "https://api.allorigins.win/raw?method=get&url=" + encodeURIComponent(GIST_RAW_URL + "?t=" + new Date().getTime());
 
-    // Intento 1: Fetch directo
-    fetch(urlConCache)
+    fetch(proxyUrl)
         .then(response => {
-            if (!response.ok) throw new Error("HTTP error " + response.status);
-            return response.json();
+            if (!response.ok) throw new Error("Error HTTP: " + response.status);
+            return response.text(); // Leemos como Texto Plano primero para evitar fallos de formato
         })
+        .then(texto => {
+            try {
+                const data = JSON.parse(texto);
+                statusMsg.style.display = "none";
+                generarBotones(data);
+            } catch (e) {
+                console.error("Error al procesar JSON:", e);
+                statusMsg.innerText = "Error: El archivo no tiene un formato JSON/TXT válido.";
+                reloadBtn.style.display = "block";
+            }
+        })
+        .catch(err => {
+            console.warn("Falló conexión vía Proxy, intentando descarga directa...", err);
+            intentoDirecto();
+        });
+}
+
+function intentoDirecto() {
+    const statusMsg = document.getElementById('statusMessage');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    fetch(GIST_RAW_URL + "?t=" + new Date().getTime())
+        .then(res => res.json())
         .then(data => {
             statusMsg.style.display = "none";
             generarBotones(data);
         })
-        .catch(err => {
-            console.warn("Falló el fetch directo, intentando vía proxy AllOrigins...", err);
-            // Intento 2: Proxy CORS AllOrigins
-            cargarViaProxy();
-        });
-}
-
-function cargarViaProxy() {
-    const statusMsg = document.getElementById('statusMessage');
-    const reloadBtn = document.getElementById('reloadBtn');
-    
-    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(GIST_RAW_URL + "?nocache=" + new Date().getTime());
-
-    fetch(proxyUrl)
-        .then(response => {
-            if (!response.ok) throw new Error("Proxy error " + response.status);
-            return response.json();
-        })
-        .then(data => {
-            // AllOrigins devuelve el contenido dentro de data.contents
-            const canales = JSON.parse(data.contents);
-            statusMsg.style.display = "none";
-            generarBotones(canales);
-        })
-        .catch(err => {
-            console.error("Falló la conexión con la lista de canales:", err);
-            statusMsg.innerText = "Error al cargar los canales. Comprueba tu conexión.";
+        .catch(e => {
+            console.error("Falló la descarga directa:", e);
+            statusMsg.innerText = "Error de red al conectar con la lista de canales.";
             reloadBtn.style.display = "block";
         });
 }
@@ -76,7 +75,7 @@ function generarBotones(listaVideos) {
     container.innerHTML = "";
 
     if (!Array.isArray(listaVideos) || listaVideos.length === 0) {
-        document.getElementById('statusMessage').innerText = "La lista JSON no contiene canales válidos.";
+        document.getElementById('statusMessage').innerText = "La lista no contiene canales válidos.";
         document.getElementById('statusMessage').style.display = "block";
         return;
     }
@@ -111,7 +110,7 @@ function reproducirCanal(url, titulo) {
         hlsPlayer = null;
     }
 
-    // Configuración para transmisiones HLS (.m3u8)
+    // Reproducción para flujos HLS (.m3u8)
     if (url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
         hlsPlayer = new Hls({
             enableWorker: true,
@@ -128,11 +127,9 @@ function reproducirCanal(url, titulo) {
             }
         });
     } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
-        // Soporte nativo para HLS (Safari/iOS)
         player.src = url;
         player.play().catch(e => console.warn('Autoplay bloqueado:', e));
     } else {
-        // Reproducción de video normal (MP4)
         player.src = url;
         player.play().catch(e => console.warn('Autoplay bloqueado:', e));
     }
