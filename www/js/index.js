@@ -1,6 +1,6 @@
 // URL de tu Gist JSON (Asegúrate de cambiarla por la TUYA)
 // TIP: Usa la URL Raw de GitHub Gist o mediante CDN para evitar fallos de CORS
-const GIST_URL = "https://gist.githubusercontent.com/TU_USUARIO/TU_GIST_ID/raw/lista.json";
+const GIST_URL = "https://gist.githubusercontent.com/juanpixel71/4dea433e849fcfda4869b1463f55e1f9/raw/canales.json";
 
 document.addEventListener('deviceready', onDeviceReady, false);
 
