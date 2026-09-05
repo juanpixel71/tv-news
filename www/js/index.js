@@ -1,4 +1,4 @@
-// Tu URL RAW de Gist (o enlace directo de archivo de Google Drive / OneDrive)
+// URL RAW de tu Gist
 const GIST_RAW_URL = "https://gist.githubusercontent.com/juanpixel71/4dea433e849fcfda4869b1463f55e1f9/raw/canales.json";
 
 let hlsPlayer = null;
@@ -10,7 +10,6 @@ function onDeviceReady() {
     document.getElementById('reloadBtn').addEventListener('click', cargarListaVideos);
 }
 
-// Para pruebas en navegador si no es app compilada
 if (!window.cordova) {
     document.addEventListener('DOMContentLoaded', () => {
         cargarListaVideos();
@@ -18,55 +17,80 @@ if (!window.cordova) {
     });
 }
 
-function cargarListaVideos() {
+// Función auxiliar para mostrar logs en la pantalla del móvil
+function logPantalla(mensaje, esError = false) {
     const statusMsg = document.getElementById('statusMessage');
+    if (statusMsg) {
+        statusMsg.innerText = mensaje;
+        statusMsg.style.color = esError ? "#ff5555" : "#ffffff";
+        statusMsg.style.display = "block";
+    }
+    console.log(mensaje);
+}
+
+function cargarListaVideos() {
     const reloadBtn = document.getElementById('reloadBtn');
     const container = document.getElementById('buttonsContainer');
     
-    statusMsg.innerText = "Cargando lista de canales...";
-    statusMsg.style.display = "block";
+    logPantalla("Iniciando carga de canales...");
     reloadBtn.style.display = "none";
     container.innerHTML = "";
 
-    // Intentamos cargar a través del proxy CORS más fiable (AllOrigins)
-    const proxyUrl = "https://api.allorigins.win/raw?method=get&url=" + encodeURIComponent(GIST_RAW_URL + "?t=" + new Date().getTime());
+    // MÉTODO 1: jsonp / script tag injection via AllOrigins
+    // Esto evita completamente las restricciones CORS/Fetch de Android WebView
+    const callbackName = "callbackCanales_" + Math.floor(Math.random() * 100000);
+    const proxyJsonpUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(GIST_RAW_URL)}&callback=${callbackName}`;
 
-    fetch(proxyUrl)
-        .then(response => {
-            if (!response.ok) throw new Error("Error HTTP: " + response.status);
-            return response.text(); // Leemos como Texto Plano primero para evitar fallos de formato
-        })
-        .then(texto => {
-            try {
-                const data = JSON.parse(texto);
-                statusMsg.style.display = "none";
-                generarBotones(data);
-            } catch (e) {
-                console.error("Error al procesar JSON:", e);
-                statusMsg.innerText = "Error: El archivo no tiene un formato JSON/TXT válido.";
+    // Creamos una función global temporal para recibir los datos
+    window[callbackName] = function(data) {
+        // Limpiamos la función y la etiqueta script
+        delete window[callbackName];
+        const scriptTag = document.getElementById('jsonp_script_tag');
+        if (scriptTag) scriptTag.remove();
+
+        try {
+            if (data && data.contents) {
+                const canales = JSON.parse(data.contents);
+                document.getElementById('statusMessage').style.display = "none";
+                generarBotones(canales);
+            } else {
+                logPantalla("Respuesta vacía del servidor proxy.", true);
                 reloadBtn.style.display = "block";
             }
-        })
-        .catch(err => {
-            console.warn("Falló conexión vía Proxy, intentando descarga directa...", err);
-            intentoDirecto();
-        });
+        } catch (e) {
+            logPantalla("Error al interpretar JSON: " + e.message, true);
+            reloadBtn.style.display = "block";
+        }
+    };
+
+    // Inyectamos el script dinámicamente en el documento
+    const script = document.createElement('script');
+    script.id = 'jsonp_script_tag';
+    script.src = proxyJsonpUrl;
+    
+    script.onerror = function(err) {
+        logPantalla("Error de red cargando script (Red/CORS bloqueado)", true);
+        reloadBtn.style.display = "block";
+        // Si falla la inyección de script, probamos el último recurso (Fetch directo)
+        intentoUltimoRecurso();
+    };
+
+    document.body.appendChild(script);
 }
 
-function intentoDirecto() {
-    const statusMsg = document.getElementById('statusMessage');
-    const reloadBtn = document.getElementById('reloadBtn');
-
+function intentoUltimoRecurso() {
     fetch(GIST_RAW_URL + "?t=" + new Date().getTime())
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error("HTTP Status " + res.status);
+            return res.json();
+        })
         .then(data => {
-            statusMsg.style.display = "none";
+            document.getElementById('statusMessage').style.display = "none";
             generarBotones(data);
         })
-        .catch(e => {
-            console.error("Falló la descarga directa:", e);
-            statusMsg.innerText = "Error de red al conectar con la lista de canales.";
-            reloadBtn.style.display = "block";
+        .catch(err => {
+            logPantalla("ERROR FINAL DE RED: " + err.message, true);
+            document.getElementById('reloadBtn').style.display = "block";
         });
 }
 
@@ -75,8 +99,7 @@ function generarBotones(listaVideos) {
     container.innerHTML = "";
 
     if (!Array.isArray(listaVideos) || listaVideos.length === 0) {
-        document.getElementById('statusMessage').innerText = "La lista no contiene canales válidos.";
-        document.getElementById('statusMessage').style.display = "block";
+        logPantalla("La lista de canales está vacía.", true);
         return;
     }
 
@@ -104,13 +127,11 @@ function reproducirCanal(url, titulo) {
 
     titleElement.innerText = titulo || 'Reproduciendo...';
 
-    // Limpiar reproductor HLS previo
     if (hlsPlayer) {
         hlsPlayer.destroy();
         hlsPlayer = null;
     }
 
-    // Reproducción para flujos HLS (.m3u8)
     if (url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
         hlsPlayer = new Hls({
             enableWorker: true,
@@ -119,18 +140,18 @@ function reproducirCanal(url, titulo) {
         hlsPlayer.loadSource(url);
         hlsPlayer.attachMedia(player);
         hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function () {
-            player.play().catch(e => console.warn('Autoplay bloqueado:', e));
+            player.play().catch(e => console.warn('Autoplay prevenido:', e));
         });
         hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
-                console.error('Error fatal de HLS:', data);
+                logPantalla("Error de emisión HLS en directo.", true);
             }
         });
     } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
         player.src = url;
-        player.play().catch(e => console.warn('Autoplay bloqueado:', e));
+        player.play().catch(e => console.warn('Autoplay prevenido:', e));
     } else {
         player.src = url;
-        player.play().catch(e => console.warn('Autoplay bloqueado:', e));
+        player.play().catch(e => console.warn('Autoplay prevenido:', e));
     }
 }
