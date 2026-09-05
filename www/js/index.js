@@ -1,5 +1,5 @@
 // Pon aquí la URL RAW directa de tu Gist
-const GIST_RAW_URL = "https://gist.githubusercontent.com/juanpixel71/AQUI_TU_GIST_ID/raw/lista.json";
+const GIST_RAW_URL = "https://gist.githubusercontent.com/juanpixel71/4dea433e849fcfda4869b1463f55e1f9/raw/canales.json";
 
 let hlsPlayer = null;
 
