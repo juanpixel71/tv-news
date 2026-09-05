@@ -10,7 +10,6 @@
     <!-- Motor HLS.js para canales .m3u8 -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-    <!-- ESTILOS CSS INTEGRADOS -->
     <style>
         * {
             box-sizing: border-box;
@@ -27,13 +26,11 @@
             min-height: 100vh;
         }
 
-        /* Header sin texto, padding-top de 25px y sin borde rojo */
+        /* Header con padding de 25px y sin bordes rojos */
         .app-header {
             background-color: #1e1e1e;
             padding-top: 25px;
-            padding-bottom: 15px;
-            padding-left: 15px;
-            padding-right: 15px;
+            padding-bottom: 10px;
             text-align: center;
         }
 
@@ -45,22 +42,26 @@
             gap: 15px;
         }
 
+        /* Proporción 16:9 para que el vídeo se vea perfecto y no aplanado en vertical */
         .video-container {
             width: 100%;
+            aspect-ratio: 16 / 9;
             background-color: #000000;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            position: relative;
         }
 
         video {
             width: 100%;
-            max-height: 60vh;
+            height: 100%;
             display: block;
             background-color: #000000;
+            object-fit: contain;
         }
 
-        /* Vista horizontal con padding arriba/abajo para no achatar el vídeo */
+        /* MODO HORIZONTAL (Sin tocar nada de la pantalla completa) */
         @media screen and (orientation: landscape) {
             .app-header, .status-message, .reload-btn, .buttons-grid {
                 display: none !important;
@@ -72,25 +73,18 @@
                 width: 100vw;
                 height: 100vh;
                 background-color: #000000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
             }
 
             .video-container {
-                padding: 20px 0;
                 width: 100vw;
                 height: 100vh;
                 border-radius: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                aspect-ratio: unset;
             }
 
             video {
-                width: 100%;
-                height: 100%;
-                max-height: calc(100vh - 40px);
+                width: 100vw;
+                height: 100vh;
                 object-fit: contain;
             }
         }
@@ -127,10 +121,10 @@
             font-size: 0.9rem;
             font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.2s, border-color 0.2s;
+            transition: background-color 0.2s;
         }
 
-        /* Estado activo seleccionado permanentemente en rojo */
+        /* Botón seleccionado activo en rojo permanentemente */
         .btn-stream.active-channel {
             background-color: #e50914 !important;
             border-color: #ffffff !important;
@@ -143,7 +137,7 @@
 
     <main class="app-content">
         <div class="video-container">
-            <video id="mainPlayer" controls playsinline poster="https://via.placeholder.com/800x450?text=Selecciona+un+canal">
+            <video id="mainPlayer" controls playsinline poster="https://via.placeholder.com/800x450/000000/FFFFFF?text=Selecciona+un+canal">
                 Tu navegador no soporta el reproductor de video.
             </video>
         </div>
